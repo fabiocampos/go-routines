@@ -2,45 +2,36 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
 func main() {
-	guitarRiffChannel := make(chan string)
-	drumBeatChannel := make(chan string)
-	go PlayGuitar(guitarRiffChannel)
-	go PlayDrums(drumBeatChannel)
-	for {
-		select {
-		case guitarrRiff, isGuitarChannelOpen := <-guitarRiffChannel:
-			if isGuitarChannelOpen == true {
-				fmt.Println(guitarrRiff)
-			}
-		case drumBeat, isDrumChannelOpen := <-drumBeatChannel:
-			if isDrumChannelOpen == true {
-				fmt.Println(drumBeat)
-			}
-		case <-time.After(2 * time.Second):
-			close(guitarRiffChannel)
-			close(drumBeatChannel)
-			fmt.Println("######Aplauses!!!!!")
-			return
-		}
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		PlayGuitar()
+		wg.Done()
+	}()
+	go func() {
+		PlayDrums()
+		wg.Done()
+	}()
+	wg.Wait()
 }
 
-func PlayGuitar(riff chan<- string) {
+func PlayGuitar() {
 	riffs := []string{"E G A", "E D C", "D D E"}
 	for _, riffToPerform := range riffs {
-		riff <- riffToPerform
+		fmt.Println(riffToPerform)
 		time.Sleep(500 * time.Millisecond)
 	}
 }
 
-func PlayDrums(beat chan<- string) {
+func PlayDrums() {
 	beats := []string{"CC1 BD CC2 BD", "CC2 BD CC1 DB", "CC1 LMT LT HFT"}
 	for _, beatToPerform := range beats {
-		beat <- beatToPerform
+		fmt.Println(beatToPerform)
 		time.Sleep(250 * time.Millisecond)
 	}
 }
