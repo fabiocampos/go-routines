@@ -2,36 +2,23 @@ package main
 
 import (
 	"fmt"
-	"sync"
 	"time"
 )
 
 func main() {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		PlayGuitar()
-		wg.Done()
-	}()
-	go func() {
-		PlayDrums()
-		wg.Done()
-	}()
-	wg.Wait()
+	start := time.Now()
+	numbers := []int{50, 60, 70, 80}
+	for _, fibonacciToDiscover := range numbers {
+		fibonacci := CalcFibonacci(fibonacciToDiscover)
+		fmt.Printf("O fibonacci de %d é %d \n", fibonacciToDiscover, fibonacci)
+	}
+	elapsed := time.Since(start)
+	fmt.Println(elapsed)
 }
 
-func PlayGuitar() {
-	riffs := []string{"E G A", "E D C", "D D E"}
-	for _, riffToPerform := range riffs {
-		fmt.Println(riffToPerform)
-		time.Sleep(500 * time.Millisecond)
+func CalcFibonacci(n int) int {
+	if n <= 1 {
+		return n
 	}
-}
-
-func PlayDrums() {
-	beats := []string{"CC1 BD CC2 BD", "CC2 BD CC1 DB", "CC1 LMT LT HFT"}
-	for _, beatToPerform := range beats {
-		fmt.Println(beatToPerform)
-		time.Sleep(250 * time.Millisecond)
-	}
+	return CalcFibonacci(n-1) + CalcFibonacci(n-2)
 }
