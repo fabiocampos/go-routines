@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	PlayGuitar("E A D G B e")
+	go PlayGuitar("E A D G B e")
 	PlayDrums("CC1 BD CC2 BD")
 }
 
