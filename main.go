@@ -1,43 +1,69 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
+	"fmt"
 	"log"
 	"net/http"
-	"strconv"
+	"time"
 )
 
-type FibonacciResponse struct {
-	Request int `json:"number"`
-	Value   int `json:"value"`
-}
-
 func main() {
-	http.HandleFunc("/fibonacci/", FibonacciHandler)
+	http.HandleFunc("/fast", FastHandler)
+	http.HandleFunc("/slow", SlowHandler)
+	http.HandleFunc("/crawl", CrawlerHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func FibonacciHandler(w http.ResponseWriter, r *http.Request) {
-	requestedValue, conversionError := strconv.Atoi(r.URL.Path[len("/fibonacci/"):])
-	if conversionError != nil {
-		requestedValue = 0
-	}
-
-	fibonacci := CalcFibonacci(requestedValue)
-	fibonacciResponse := &FibonacciResponse{Request: requestedValue, Value: fibonacci}
-	response, error := json.Marshal(fibonacciResponse)
-	if error != nil {
-		http.Error(w, error.Error(), http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
+func SlowHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(10 * time.Second)
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
 }
 
-func CalcFibonacci(n int) int {
-	if n <= 1 {
-		return n
+func FastHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(1 * time.Millisecond)
+	w.WriteHeader(http.StatusOK)
+}
+
+func CrawlerHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	crawlResponse := make(chan string)
+	go func() {
+		url, error := Crawl("http://localhost:8080/slow")
+		if error != nil {
+			cancel()
+		} else {
+			crawlResponse <- url
+			close(crawlResponse)
+		}
+	}()
+	ProcessResponse(ctx, crawlResponse, w)
+}
+
+func ProcessResponse(ctx context.Context, crawlResponse <-chan string, w http.ResponseWriter) {
+	select {
+	case data := <-crawlResponse:
+		fmt.Println(data)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(data))
+	case <-ctx.Done():
+		fmt.Println("X.x")
+		w.WriteHeader(http.StatusInternalServerError)
 	}
-	return CalcFibonacci(n-1) + CalcFibonacci(n-2)
+}
+
+func Crawl(url string) (string, error) {
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 1*time.Second)
+
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	req = req.WithContext(ctx)
+	client := &http.Client{}
+	_, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Request failed:", err)
+		return "", err
+	}
+	return url, nil
 }
