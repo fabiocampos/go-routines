@@ -1,52 +1,38 @@
 package main
 
 import (
-	"fmt"
-	"time"
+	"encoding/json"
+	"log"
+	"net/http"
+	"strconv"
 )
 
-type Fibonacci struct {
-	FibonacciRequest  int
-	FibonacciResponse int
+type FibonacciResponse struct {
+	Request int `json:"number"`
+	Value   int `json:"value"`
 }
 
 func main() {
-	//CallFibonacciSync()
-	CallFibonacciAsync()
+	http.HandleFunc("/fibonacci/", FibonacciHandler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func CallFibonacciAsync() {
-	start := time.Now()
-	numbers := []int{30, 50, 40, 52}
-	channel := make(chan Fibonacci, len(numbers))
-
-	for _, fibonacciToDiscover := range numbers {
-		go AsyncFibonacciService(fibonacciToDiscover, channel)
+func FibonacciHandler(w http.ResponseWriter, r *http.Request) {
+	requestedValue, conversionError := strconv.Atoi(r.URL.Path[len("/fibonacci/"):])
+	if conversionError != nil {
+		requestedValue = 0
 	}
 
-	for i := 0; i < len(numbers); i++ {
-		fib := <-channel
-		fmt.Printf("O fibonacci de %d é %d \n", fib.FibonacciRequest, fib.FibonacciResponse)
+	fibonacci := CalcFibonacci(requestedValue)
+	fibonacciResponse := &FibonacciResponse{Request: requestedValue, Value: fibonacci}
+	response, error := json.Marshal(fibonacciResponse)
+	if error != nil {
+		http.Error(w, error.Error(), http.StatusInternalServerError)
 	}
-	close(channel)
-	elapsed := time.Since(start)
-	fmt.Println(elapsed)
-}
 
-func CallFibonacciSync() {
-	start := time.Now()
-	numbers := []int{30, 50, 40, 52}
-	for _, fibonacciToDiscover := range numbers {
-		fib := CalcFibonacci(fibonacciToDiscover)
-		fmt.Printf("O fibonacci de %d é %d \n", fibonacciToDiscover, fib)
-	}
-	elapsed := time.Since(start)
-	fmt.Println(elapsed)
-}
-
-func AsyncFibonacciService(fibonacciToDiscover int, response chan<- Fibonacci) {
-	fibonacci := CalcFibonacci(fibonacciToDiscover)
-	response <- Fibonacci{FibonacciRequest: fibonacciToDiscover, FibonacciResponse: fibonacci}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func CalcFibonacci(n int) int {
